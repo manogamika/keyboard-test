@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keyboard Test</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #151c30;
+    --key: #1f2a44;
+    --key-hover: #2a3757;
+    --key-border: #33415f;
+    --text: #e2e8f0;
+    --muted: #8b9ab8;
+    --accent: #38bdf8;
+    --active: #22c55e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    background: radial-gradient(circle at top, #16213e, var(--bg));
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 80px 12px 40px;
+    text-align: center;
+  }
+
+  .hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 80;
+    height: 56px;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px;
+    background: rgba(21, 28, 48, 0.88);
+    backdrop-filter: blur(10px);
+    border-bottom: none;
+    box-shadow: none;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand-icon { font-size: 1.25rem; }
+  .brand-name {
+    font-size: 1.05rem; font-weight: 800; letter-spacing: .5px;
+    white-space: nowrap; color: var(--text);
+  }
+  .topbar .hint { margin: 0 0 0 auto; white-space: nowrap; }
+
+  .menu-wrap {
+    position: relative; flex: 0 0 auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .switch-label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+  .switch {
+    position: relative;
+    width: 44px; height: 26px; border-radius: 999px;
+    border: 1px solid var(--key-border);
+    background: var(--key);
+    cursor: pointer; padding: 0;
+    transition: all .15s;
+  }
+  .switch .knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--muted);
+    transition: left .15s, background .15s;
+  }
+  .switch:hover { border-color: var(--accent); }
+  .switch.on {
+    border-color: var(--active);
+    background: rgba(34,197,94,.22);
+    box-shadow: 0 0 10px rgba(34,197,94,.35);
+  }
+  .switch.on .knob {
+    left: calc(100% - 22px);
+    background: var(--active);
+  }
+  .burger {
+    width: 42px; height: 42px; border-radius: 12px;
+    border: 1px solid var(--key-border);
+    background: var(--panel); cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px;
+    transition: all .15s;
+  }
+  .burger span {
+    display: block; width: 18px; height: 2px; border-radius: 2px;
+    background: var(--text); transition: transform .2s, opacity .2s;
+  }
+  .burger:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(56,189,248,.3); }
+  .burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .burger.open span:nth-child(2) { opacity: 0; }
+  .burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  .menu {
+    position: absolute; top: calc(100% + 10px); right: 0;
+    min-width: 260px;
+    background: var(--panel);
+    border: 1px solid var(--key-border);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 15px 50px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; gap: 2px;
+    opacity: 0; visibility: hidden; transform: translateY(-6px);
+    transition: opacity .15s, transform .15s, visibility .15s;
+  }
+  .menu.open { opacity: 1; visibility: visible; transform: translateY(0); }
+
+  .menu-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent; border: 0; border-radius: 8px;
+    color: var(--text); font-family: inherit; font-size: 0.88rem;
+    cursor: pointer; text-align: left;
+    transition: background .12s;
+  }
+  .menu-item:hover:not(:disabled) { background: var(--key-hover); }
+  .menu-item:disabled { color: var(--muted); opacity: .55; cursor: default; }
+  .menu-item kbd {
+    background: #1f2a44; border: 1px solid #33415f;
+    border-radius: 5px; padding: 1px 6px;
+    font-family: ui-monospace, monospace; font-size: 0.72em;
+    color: var(--accent);
+  }
+  .menu-note {
+    padding: 8px 12px 6px; margin-top: 4px;
+    border-top: 1px solid var(--key-border);
+    font-size: 0.7rem; color: var(--muted);
+  }
+
+  @media (max-width: 760px) {
+    .topbar .hint, .switch-label { display: none; }
+    .menu-wrap { margin-left: auto; }
+  }
+
+  .layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 1600px;
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .side-panel {
+    flex: 0 0 300px;
+    width: 300px;
+    max-height: calc(100vh - 120px);
+    position: sticky;
+    top: 76px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--key-border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 15px 50px rgba(0,0,0,.4);
+  }
+
+  .side-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--key-border);
+    background: rgba(31, 42, 68, 0.5);
+  }
+
+  .side-panel-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .side-panel-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: ui-monospace, monospace;
+    color: var(--accent);
+    background: rgba(56,189,248,.12);
+    border: 1px solid rgba(56,189,248,.25);
+    border-radius: 999px;
+    padding: 1px 8px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  .side-panel-clear {
+    font-size: 0.7rem;
+    font-family: inherit;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--key-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .side-panel-clear:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .log-list {
+    list-style: none;
+    margin: 0;
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+  }
+  .log-list::-webkit-scrollbar { width: 8px; }
+  .log-list::-webkit-scrollbar-thumb {
+    background: #33415f; border-radius: 4px;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    background: rgba(31, 42, 68, 0.6);
+    border: 1px solid var(--key-border);
+    border-radius: 8px;
+    animation: logIn .18s ease;
+  }
+
+  @keyframes logIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-item.is-new {
+    border-color: var(--active);
+    box-shadow: 0 0 10px rgba(34,197,94,.3);
+  }
+
+  .log-badge {
+    flex: 0 0 auto;
+    min-width: 30px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+    background: linear-gradient(180deg, #253253, var(--key));
+    border: 1px solid var(--key-border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .log-item.is-new .log-badge {
+    border-color: var(--active);
+    color: var(--active);
+  }
+
+  .log-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .log-code {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .log-time {
+    font-size: 0.62rem;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+  }
+
+  .key-display {
+    width: min(95vw, 420px); min-height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel); border: 2px solid var(--key-border);
+    border-radius: 16px; padding: 12px;
+    transition: border-color .1s, transform .1s;
+  }
+  .key-display.active {
+    border-color: var(--active); transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(34,197,94,.35);
+  }
+  #keyName {
+    font-size: clamp(1.6rem, 7vw, 3rem); font-weight: 700;
+    color: var(--accent); word-break: break-all; line-height: 1.1;
+  }
+  .key-display.active #keyName { color: var(--active); }
+
+  .info-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px; width: min(96vw, 700px);
+  }
+  .info-card {
+    background: var(--panel); border: 1px solid var(--key-border);
+    border-radius: 10px; padding: 8px 10px;
+  }
+  .info-card .label {
+    font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); margin-bottom: 4px;
+  }
+  .info-card .value {
+    font-size: 1rem; font-weight: 600;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    color: var(--accent); word-break: break-all;
+  }
+
+  .keyboard {
+    --u: 44px;
+    --gap: 5px;
+    --r: 7px;
+
+    display: flex; flex-direction: column; gap: var(--gap);
+    padding: 14px;
+    background: var(--panel);
+    border: 1px solid var(--key-border);
+    border-radius: 16px;
+    width: max-content; max-width: 100%;
+    overflow-x: auto;
+    box-shadow: 0 15px 50px rgba(0,0,0,.5);
+  }
+
+  .krow { display: flex; gap: var(--gap); align-items: flex-start; }
+
+  .kgroup { display: flex; flex-direction: column; gap: var(--gap); }
+  .kgroup-main   { width: calc(var(--u) * 15 - var(--gap)); }
+  .kgroup-nav    { width: calc(var(--u) * 3  - var(--gap)); margin-left: calc(var(--u) * 0.25); }
+  .kgroup-numpad { width: calc(var(--u) * 4  - var(--gap)); margin-left: calc(var(--u) * 0.25); }
+
+  .kgroup > .krow { height: calc(var(--u) - var(--gap)); }
+
+  .k {
+    flex: 0 0 auto;
+    width: calc(var(--u) - var(--gap));
+    height: calc(var(--u) - var(--gap));
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, #253253, var(--key));
+    border: 1px solid var(--key-border);
+    border-bottom-width: 3px;
+    border-radius: var(--r);
+    color: var(--text);
+    font-size: 0.75rem; font-weight: 600;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    user-select: none;
+    transition: all .07s;
+    cursor: default;
+    padding: 0 4px; white-space: nowrap;
+  }
+  .k:hover { background: linear-gradient(180deg, #2c3b60, var(--key-hover)); }
+
+  .k[data-u="1.25"] { width: calc(var(--u) * 1.25 - var(--gap)); }
+  .k[data-u="1.5"]  { width: calc(var(--u) * 1.5  - var(--gap)); }
+  .k[data-u="1.75"] { width: calc(var(--u) * 1.75 - var(--gap)); }
+  .k[data-u="2"]    { width: calc(var(--u) * 2    - var(--gap)); }
+  .k[data-u="2.25"] { width: calc(var(--u) * 2.25 - var(--gap)); }
+  .k[data-u="2.75"] { width: calc(var(--u) * 2.75 - var(--gap)); }
+  .k[data-u="6.25"] { width: calc(var(--u) * 6.25 - var(--gap)); }
+
+  .k.tall { height: calc(var(--u) * 2 - var(--gap)); z-index: 1; }
+
+  .k.push-1u   { margin-left: calc(var(--u) * 1); }
+  .k.push-half { margin-left: calc(var(--u) * 0.5); }
+
+  .k.sub { flex-direction: column; line-height: 1.05; font-size: 0.7rem; }
+  .k.sub small { font-size: 0.55rem; color: var(--muted); }
+
+  .k.pressed {
+    background: var(--active) !important;
+    border-color: var(--active) !important;
+    color: #052e16 !important;
+    transform: translateY(2px);
+    border-bottom-width: 1px;
+    box-shadow: 0 0 14px rgba(34,197,94,.7);
+  }
+  .k.pressed small { color: #052e16 !important; }
+
+  .k.fkey { font-size: 0.65rem; }
+
+  .ksp {
+    flex: 0 0 auto;
+    width: calc(var(--u) - var(--gap));
+    height: calc(var(--u) - var(--gap));
+  }
+
+  .status { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; margin: 0; }
+
+  .keyboard::-webkit-scrollbar { height: 8px; }
+  .keyboard::-webkit-scrollbar-thumb { background: #33415f; border-radius: 4px; }
+
+  .github-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 90;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel);
+    border: 1px solid var(--key-border);
+    border-radius: 50%;
+    color: var(--text);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    transition: transform .15s, border-color .15s, box-shadow .15s, color .15s;
+  }
+  .github-fab svg {
+    width: 26px;
+    height: 26px;
+    fill: currentColor;
+  }
+  .github-fab:hover {
+    transform: translateY(-2px) scale(1.05);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 12px 34px rgba(0,0,0,.6), 0 0 16px rgba(56,189,248,.35);
+  }
+  .github-fab:active { transform: translateY(0) scale(0.97); }
+
+  @media (max-width: 1100px) {
+    .layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .side-panel {
+      position: static;
+      width: min(96vw, 700px);
+      flex: 0 0 auto;
+      max-height: 320px;
+    }
+    .main-content { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true"></span>
+      <span class="brand-name">Keyboard Test</span>
+    </div>
+    <p class="hint">Tekan tombol apa saja untuk mulai mengecek</p>
+    <div class="menu-wrap">
+      <span class="switch-label" id="stickyLabel">Tahan warna</span>
+      <button class="switch" id="btnSticky" role="switch" aria-checked="false" aria-labelledby="stickyLabel" title="Tahan warna: tombol tetap hijau setelah dilepas — reset lewat menu ☰">
+        <span class="knob"></span>
+      </button>
+      <button class="burger" id="btnMenu" aria-label="Buka menu" aria-expanded="false" title="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="menu" id="menu" aria-label="Menu utama">
+        <button class="menu-item" id="menuReset"><span>↺&ensp;Reset tampilan</span></button>
+        <div class="menu-note">104-key ANSI · numpad &amp; panah standar</div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <div class="main-content">
+
+      <div class="key-display" id="keyDisplay">
+        <span id="keyName">—</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card"><div class="label">event.key</div><div class="value" id="valKey">—</div></div>
+        <div class="info-card"><div class="label">event.code</div><div class="value" id="valCode">—</div></div>
+        <div class="info-card"><div class="label">event.keyCode</div><div class="value" id="valKeyCode">—</div></div>
+        <div class="info-card"><div class="label">event.location</div><div class="value" id="valLocation">—</div></div>
+      </div>
+
+      <div class="keyboard" id="keyboard">
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k fkey" data-code="Escape">Esc</div>
+              <div class="k fkey push-1u" data-code="F1">F1</div>
+              <div class="k fkey" data-code="F2">F2</div>
+              <div class="k fkey" data-code="F3">F3</div>
+              <div class="k fkey" data-code="F4">F4</div>
+              <div class="k fkey push-half" data-code="F5">F5</div>
+              <div class="k fkey" data-code="F6">F6</div>
+              <div class="k fkey" data-code="F7">F7</div>
+              <div class="k fkey" data-code="F8">F8</div>
+              <div class="k fkey push-half" data-code="F9">F9</div>
+              <div class="k fkey" data-code="F10">F10</div>
+              <div class="k fkey" data-code="F11">F11</div>
+              <div class="k fkey" data-code="F12">F12</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav">
+            <div class="krow">
+              <div class="k fkey" data-code="PrintScreen">PrtSc</div>
+              <div class="k fkey" data-code="ScrollLock">ScrLk</div>
+              <div class="k fkey" data-code="Pause">Pause</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-numpad">
+            <div class="krow">
+              <div class="k fkey" data-code="NumLock">Num</div>
+              <div class="k fkey" data-code="NumpadDivide">/</div>
+              <div class="k fkey" data-code="NumpadMultiply">*</div>
+              <div class="k fkey" data-code="NumpadSubtract">−</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k sub" data-code="Backquote"><small>~</small>`</div>
+              <div class="k sub" data-code="Digit1"><small>!</small>1</div>
+              <div class="k sub" data-code="Digit2"><small>@</small>2</div>
+              <div class="k sub" data-code="Digit3"><small>#</small>3</div>
+              <div class="k sub" data-code="Digit4"><small>$</small>4</div>
+              <div class="k sub" data-code="Digit5"><small>%</small>5</div>
+              <div class="k sub" data-code="Digit6"><small>^</small>6</div>
+              <div class="k sub" data-code="Digit7"><small>&amp;</small>7</div>
+              <div class="k sub" data-code="Digit8"><small>*</small>8</div>
+              <div class="k sub" data-code="Digit9"><small>(</small>9</div>
+              <div class="k sub" data-code="Digit0"><small>)</small>0</div>
+              <div class="k sub" data-code="Minus"><small>_</small>-</div>
+              <div class="k sub" data-code="Equal"><small>+</small>=</div>
+              <div class="k" data-code="Backspace" data-u="2">Backspace</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav">
+            <div class="krow">
+              <div class="k" data-code="Insert">Ins</div>
+              <div class="k" data-code="Home">Home</div>
+              <div class="k" data-code="PageUp">PgUp</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-numpad">
+            <div class="krow">
+              <div class="k" data-code="Numpad7">7</div>
+              <div class="k" data-code="Numpad8">8</div>
+              <div class="k" data-code="Numpad9">9</div>
+              <div class="k tall" data-code="NumpadAdd">+</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k" data-code="Tab" data-u="1.5">Tab</div>
+              <div class="k" data-code="KeyQ">Q</div>
+              <div class="k" data-code="KeyW">W</div>
+              <div class="k" data-code="KeyE">E</div>
+              <div class="k" data-code="KeyR">R</div>
+              <div class="k" data-code="KeyT">T</div>
+              <div class="k" data-code="KeyY">Y</div>
+              <div class="k" data-code="KeyU">U</div>
+              <div class="k" data-code="KeyI">I</div>
+              <div class="k" data-code="KeyO">O</div>
+              <div class="k" data-code="KeyP">P</div>
+              <div class="k sub" data-code="BracketLeft"><small>{</small>[</div>
+              <div class="k sub" data-code="BracketRight"><small>}</small>]</div>
+              <div class="k" data-code="Backslash" data-u="1.5">\</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav">
+            <div class="krow">
+              <div class="k" data-code="Delete">Del</div>
+              <div class="k" data-code="End">End</div>
+              <div class="k" data-code="PageDown">PgDn</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-numpad">
+            <div class="krow">
+              <div class="k" data-code="Numpad4">4</div>
+              <div class="k" data-code="Numpad5">5</div>
+              <div class="k" data-code="Numpad6">6</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k" data-code="CapsLock" data-u="1.75">Caps</div>
+              <div class="k" data-code="KeyA">A</div>
+              <div class="k" data-code="KeyS">S</div>
+              <div class="k" data-code="KeyD">D</div>
+              <div class="k" data-code="KeyF">F</div>
+              <div class="k" data-code="KeyG">G</div>
+              <div class="k" data-code="KeyH">H</div>
+              <div class="k" data-code="KeyJ">J</div>
+              <div class="k" data-code="KeyK">K</div>
+              <div class="k" data-code="KeyL">L</div>
+              <div class="k sub" data-code="Semicolon"><small>:</small>;</div>
+              <div class="k sub" data-code="Quote"><small>"</small>'</div>
+              <div class="k" data-code="Enter" data-u="2.25">Enter</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav"></div>
+          <div class="kgroup kgroup-numpad">
+            <div class="krow">
+              <div class="k" data-code="Numpad1">1</div>
+              <div class="k" data-code="Numpad2">2</div>
+              <div class="k" data-code="Numpad3">3</div>
+              <div class="k tall" data-code="NumpadEnter">↵</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k" data-code="ShiftLeft" data-u="2.25">Shift</div>
+              <div class="k" data-code="KeyZ">Z</div>
+              <div class="k" data-code="KeyX">X</div>
+              <div class="k" data-code="KeyC">C</div>
+              <div class="k" data-code="KeyV">V</div>
+              <div class="k" data-code="KeyB">B</div>
+              <div class="k" data-code="KeyN">N</div>
+              <div class="k" data-code="KeyM">M</div>
+              <div class="k sub" data-code="Comma"><small>&lt;</small>,</div>
+              <div class="k sub" data-code="Period"><small>&gt;</small>.</div>
+              <div class="k sub" data-code="Slash"><small>?</small>/</div>
+              <div class="k" data-code="ShiftRight" data-u="2.75">Shift</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav">
+            <div class="krow">
+              <div class="ksp" aria-hidden="true"></div>
+              <div class="k" data-code="ArrowUp">↑</div>
+              <div class="ksp" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-numpad">
+            <div class="krow">
+              <div class="k" data-code="Numpad0" data-u="2">0</div>
+              <div class="k" data-code="NumpadDecimal">.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="krow">
+          <div class="kgroup kgroup-main">
+            <div class="krow">
+              <div class="k" data-code="ControlLeft" data-u="1.25">Ctrl</div>
+              <div class="k" data-code="MetaLeft" data-u="1.25">Win</div>
+              <div class="k" data-code="AltLeft" data-u="1.25">Alt</div>
+              <div class="k" data-code="Space" data-u="6.25">Space</div>
+              <div class="k" data-code="AltRight" data-u="1.25">Alt</div>
+              <div class="k" data-code="MetaRight" data-u="1.25">Win</div>
+              <div class="k" data-code="ContextMenu" data-u="1.25">Menu</div>
+              <div class="k" data-code="ControlRight" data-u="1.25">Ctrl</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-nav">
+            <div class="krow">
+              <div class="k" data-code="ArrowLeft">←</div>
+              <div class="k" data-code="ArrowDown">↓</div>
+              <div class="k" data-code="ArrowRight">→</div>
+            </div>
+          </div>
+          <div class="kgroup kgroup-numpad"></div>
+        </div>
+
+      </div>
+
+      <p class="status" id="status">Menunggu input…</p>
+
+    </div>
+
+    <aside class="side-panel" aria-label="Log tombol yang sudah disentuh">
+      <div class="side-panel-header">
+        <h2 class="side-panel-title">Tombol Disentuh</h2>
+        <span class="side-panel-count" id="logCount">0</span>
+        <button class="side-panel-clear" id="logClear" title="Bersihkan log">Hapus</button>
+      </div>
+      <ul class="log-list" id="logList"></ul>
+    </aside>
+
+  </div>
+
+  <a class="github-fab"
+     href="https://github.com/manogamika/keyboard-test"
+     target="_blank"
+     rel="noopener noreferrer"
+     aria-label="Buka repositori GitHub"
+     title="Lihat di GitHub">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.04 11.04 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.41-5.26 5.69.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
+    </svg>
+  </a>
+
+<script>
+  const btnMenu = document.getElementById("btnMenu");
+  const menu = document.getElementById("menu");
+  const menuReset = document.getElementById("menuReset");
+  const btnSticky = document.getElementById("btnSticky");
+
+  const keyDisplay = document.getElementById("keyDisplay");
+  const keyName = document.getElementById("keyName");
+  const valKey = document.getElementById("valKey");
+  const valCode = document.getElementById("valCode");
+  const valKeyCode = document.getElementById("valKeyCode");
+  const valLocation = document.getElementById("valLocation");
+  const statusEl = document.getElementById("status");
+
+  const logList = document.getElementById("logList");
+  const logCount = document.getElementById("logCount");
+  const logClear = document.getElementById("logClear");
+
+  const keyMap = new Map();
+  document.querySelectorAll(".k[data-code]").forEach(el => {
+    keyMap.set(el.dataset.code, el);
+  });
+
+  const locations = ["Standar", "Kiri", "Kanan", "Numpad"];
+  let menuOpen = false;
+  let sticky = false;
+
+  const touchedCodes = new Set();
+  let logEntries = 0;
+
+  function displayName(e) {
+    if (e.key === " ") return "Space";
+    if (e.key === "Dead") return "Dead";
+    if (e.key.length === 1) return e.key.toUpperCase();
+    return e.key;
+  }
+
+  function shortLabel(e) {
+    if (e.key === " ") return "Space";
+    if (e.key === "Dead") return "Dead";
+    if (e.key.length === 1) return e.key.toUpperCase();
+    const map = {
+      Escape: "Esc",
+      Backspace: "Bksp",
+      Enter: "Enter",
+      Tab: "Tab",
+      CapsLock: "Caps",
+      Shift: "Shift",
+      Control: "Ctrl",
+      Alt: "Alt",
+      Meta: "Win",
+      ContextMenu: "Menu",
+      Insert: "Ins",
+      Delete: "Del",
+      Home: "Home",
+      End: "End",
+      PageUp: "PgUp",
+      PageDown: "PgDn",
+      ArrowUp: "↑",
+      ArrowDown: "↓",
+      ArrowLeft: "←",
+      ArrowRight: "→",
+      PrintScreen: "PrtSc",
+      ScrollLock: "ScrLk",
+      Pause: "Pause",
+      NumLock: "Num",
+      NumpadDivide: "/",
+      NumpadMultiply: "*",
+      NumpadSubtract: "−",
+      NumpadAdd: "+",
+      NumpadEnter: "↵",
+      NumpadDecimal: ".",
+    };
+    if (map[e.key]) return map[e.key];
+    if (e.code && e.code.startsWith("Numpad")) return e.code.replace("Numpad", "N");
+    return displayName(e);
+  }
+
+  function formatTime() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  function updateLogCount() {
+    logCount.textContent = String(logEntries);
+  }
+
+  function addLogEntry(e) {
+    if (touchedCodes.has(e.code)) return;
+    touchedCodes.add(e.code);
+
+    const li = document.createElement("li");
+    li.className = "log-item is-new";
+    li.dataset.code = e.code;
+
+    const badge = document.createElement("span");
+    badge.className = "log-badge";
+    badge.textContent = shortLabel(e);
+
+    const meta = document.createElement("div");
+    meta.className = "log-meta";
+
+    const codeEl = document.createElement("span");
+    codeEl.className = "log-code";
+    codeEl.textContent = e.code || "—";
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "log-time";
+    timeEl.textContent = formatTime();
+
+    meta.appendChild(codeEl);
+    meta.appendChild(timeEl);
+    li.appendChild(badge);
+    li.appendChild(meta);
+
+    logList.appendChild(li);
+    logEntries++;
+    updateLogCount();
+
+    logList.scrollTop = logList.scrollHeight;
+
+    setTimeout(() => li.classList.remove("is-new"), 1000);
+  }
+
+  function clearLog() {
+    touchedCodes.clear();
+    logEntries = 0;
+    updateLogCount();
+    logList.innerHTML = "";
+  }
+
+  function updateDisplay(e, pressed) {
+    keyDisplay.classList.toggle("active", pressed);
+    keyName.textContent = displayName(e);
+    valKey.textContent = e.key === " " ? "Space" : e.key;
+    valCode.textContent = e.code || "—";
+    valKeyCode.textContent = e.keyCode;
+    valLocation.textContent = locations[e.location] ?? e.location;
+
+    const el = keyMap.get(e.code);
+    if (el) {
+      if (pressed || !sticky) el.classList.toggle("pressed", pressed);
+    }
+
+    statusEl.textContent = pressed
+      ? `Tombol ditekan: ${displayName(e)} — lepaskan untuk reset`
+      : "Menunggu input… (☰ untuk reset)";
+  }
+
+  function resetDisplay() {
+    keyDisplay.classList.remove("active");
+    keyName.textContent = "—";
+    valKey.textContent = "—";
+    valCode.textContent = "—";
+    valKeyCode.textContent = "—";
+    valLocation.textContent = "—";
+    statusEl.textContent = "Menunggu input…";
+    keyMap.forEach(el => el.classList.remove("pressed"));
+  }
+
+  function setMenu(open) {
+    menuOpen = open;
+    menu.classList.toggle("open", open);
+    btnMenu.classList.toggle("open", open);
+    btnMenu.setAttribute("aria-expanded", String(open));
+  }
+
+  btnMenu.addEventListener("click", () => setMenu(!menuOpen));
+  menuReset.addEventListener("click", () => { setMenu(false); resetDisplay(); });
+
+  logClear.addEventListener("click", clearLog);
+
+  document.addEventListener("click", (e) => {
+    if (menuOpen && !menu.contains(e.target) && !btnMenu.contains(e.target)) setMenu(false);
+  });
+
+  btnSticky.addEventListener("click", () => {
+    sticky = !sticky;
+    btnSticky.classList.toggle("on", sticky);
+    btnSticky.setAttribute("aria-checked", String(sticky));
+    if (!sticky) keyMap.forEach(el => el.classList.remove("pressed"));
+    statusEl.textContent = sticky
+      ? "Mode tahan warna AKTIF — tombol tetap hijau sampai Reset tampilan"
+      : "Mode tahan warna nonaktif";
+  });
+
+  const CAPTURE_KEYS = new Set([
+    "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+    "Tab", " ", "Enter", "Backspace",
+    "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+    "Home", "End", "PageUp", "PageDown", "Insert", "Delete",
+    "Escape", "PrintScreen", "ScrollLock", "Pause", "ContextMenu",
+    "Alt", "AltGraph", "CapsLock", "NumLock"
+  ]);
+
+  window.addEventListener("keydown", (e) => {
+    if (menuOpen) setMenu(false);
+
+    if (CAPTURE_KEYS.has(e.key)) {
+      e.preventDefault();
+    }
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+    }
+
+    if (e.code) addLogEntry(e);
+
+    updateDisplay(e, true);
+  }, { capture: true });
+
+  window.addEventListener("keyup", (e) => {
+    updateDisplay(e, false);
+  }, { capture: true });
+
+  window.addEventListener("blur", () => {
+    resetDisplay();
+    setMenu(false);
+  });
+</script>
+</body>
+</html>
